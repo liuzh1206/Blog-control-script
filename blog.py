@@ -8,76 +8,162 @@ import sys
 from functools import partial
 
 import pypandoc
-from tqdm import tqdm
+import webbrowser
+
+
+class process():
+    def __init__(self, total=0, start_str='', end_str=''):
+        self.total = total
+        self.status = 0
+        self.start_str = start_str
+        self.end_str = end_str
+
+        if self.end_str == '':
+            self.end_str = str(self.total)
+
+        self.start_str += ' '
+        total_length = os.get_terminal_size().columns
+        total_length -= len(self.start_str + self.end_str+'  ' +
+                            ' {}|'.format(self.status/self.total*100))
+        bar = ''.join(["\033[7m "] * int(self.status /
+                                         self.total * total_length))
+        bar = '\r' + self.start_str + bar + \
+            '\033[0m {}|'.format(self.status) + self.end_str
+        print(bar, end='', flush=True)
+
+    def set_start_str(self, start_str):
+        self.start_str = start_str + ' '
+
+    def set_end_str(self, end_str):
+        self.end_str = end_str
+
+    def update(self, update):
+
+        self.status += update
+        total_length = os.get_terminal_size().columns
+        total_length -= len(self.start_str + self.end_str+'  ' +
+                            ' {}|'.format(self.status/self.total*100))
+        bar = ''.join(["\033[7m "] * int(self.status /
+                                         self.total * total_length))
+        bar = '\r' + self.start_str + bar + \
+            '\033[0m {}|'.format(self.status) + self.end_str
+        print(bar, end='', flush=True)
 
 
 class blog(object):
 
+    THEME = 'panda'
     file_list = {}
+    n = 0
+    process_bar = None
 
     def __init__(self):
-        if os.path.exists('./data.json'):
-            with open('./data.json') as data:
-                self.file_list = json.load(data)
-            pass
-        else:
-            self.get_file_list()
-            with open('./data.json', 'w+') as data:
-                data.write(json.dumps(self.file_list))
-            pass
-        return
-
-    def get_file_list(self):
-        source = os.listdir('source')
-        for i in source:
-            self.file_list[i] = []
-            if os.path.isdir(os.path.join('source', i)):
-                files = os.listdir(os.path.join('source', i))
-                for j in files:
-                    if os.path.splitext(j)[1] == '.md':
-                        self.file_list[i].append(os.path.splitext(j)[0])
-        return self.file_list
-
-    def out(self):
-        totle_markdown_file_number = 0
-        for i in self.file_list:
-            totle_markdown_file_number += len(self.file_list[i])
-        process_bar = tqdm(total=totle_markdown_file_number)
-        for path in self.file_list:
-            if os.path.exists(os.path.join('out', path)):
-                if os.path.exists(os.path.join('out', path, 'picture')):
-                    pass
-                else:
-                    os.mkdir(os.path.join('out', path, 'picture'))
-                    pass
-                pass
-            else:
-                os.mkdir(os.path.join('out', path))
-                os.mkdir(os.path.join('out', path, 'picture'))
-                pass
-            for i in os.listdir(os.path.join('source', path, 'picture')):
-                shutil.copyfile(os.path.join('source', path, 'picture', i),
-                                os.path.join('out', path, 'picture', i))
-            for files in self.file_list[path]:
-                input_file = os.path.join('source', path, files) + '.md'
-                out_file = os.path.join('out', path, files) + '.html'
-                self.markdown_convert_html(input_file, out_file, files)
-                process_bar.set_description(f'Converting file:{files}.md')
-                process_bar.update(1)
-                pass
         pass
 
-    def markdown_convert_html(self, input_file, out_file, title):
+    def get_files(self, path):
+        dirs = {}
+        files = []
+        for i in os.listdir(path):
+            if os.path.isdir(os.path.join(path, i)):
+                dirss, filess = self.get_files(os.path.join(path, i))
+                if dirss == {}:
+                    dirs[i] = [*filess]
+                else:
+                    dirs[i] = [*filess, dirss]
+            else:
+                if os.path.splitext(i)[1] == '.md':
+                    self.n += 1
+                files.append(i)
+        return dirs, files
+
+    def write_data(self):
+        file_data = self.get_files('source')
+        with open('./out/data.json', 'w') as data:
+            data.write(json.dumps({'source': [file_data[0], *file_data[1]]}))
+
+    def out(self):
+        self.write_data()
+        with open('./out/data.json') as datas:
+            files = json.load(datas)
+        self.process_bar = process(self.n)
+        self.compile_html('source', 'out', files['source'])
+
+    def compile_html(self, mk_path, html_path, paths):
+        if isinstance(paths, list):
+            for i in paths:
+                if isinstance(i, dict):
+                    self.compile_html(mk_path, html_path, i)
+                else:
+                    if os.path.splitext(i)[1] == '.md':
+                        self.process_bar.set_start_str(i)
+                        if i == 'index.md':
+                            self.markdown_convert_html(os.path.join(mk_path, i), os.path.join(
+                                html_path, os.path.splitext(i)[0] + '.html'), os.path.splitext(i)[0], 'index')
+                            if not os.path.exists(os.path.join(html_path, 'script')):
+                                os.mkdir(os.path.join(html_path, 'script'))
+                            if not os.path.exists(os.path.join(html_path, 'script', os.path.splitext(i)[0] + '.js')):
+                                with open(os.path.join(html_path, 'script', os.path.splitext(i)[0] + '.js'), 'w') as js:
+                                    js.write('')
+                        else:
+                            self.markdown_convert_html(os.path.join(mk_path, i), os.path.join(
+                                html_path, os.path.splitext(i)[0] + '.html'), os.path.splitext(i)[0], os.path.splitext(i))
+                            if not os.path.exists(os.path.join(html_path, 'script')):
+                                os.mkdir(os.path.join(html_path, 'script'))
+                            if not os.path.exists(os.path.join(html_path, 'script', os.path.splitext(i)[0] + '.js')):
+                                with open(os.path.join(html_path, 'script', os.path.splitext(i)[0] + '.js'), 'w') as js:
+                                    js.write('')
+                        self.process_bar.update(1)
+                    else:
+                        shutil.copyfile(os.path.join(
+                            'source', i), os.path.join('out', i))
+        elif isinstance(paths, dict):
+            for i in paths:
+                if not os.path.exists(os.path.join(html_path, i)):
+                    os.mkdir(os.path.join(html_path, i))
+                for j in paths[i]:
+                    if isinstance(j, dict):
+                        self.compile_html(os.path.join(
+                            mk_path, i), os.path.join(html_path, i), j)
+                    else:
+                        if os.path.splitext(j)[1] == '.md':
+                            self.process_bar.set_start_str(j)
+                            self.markdown_convert_html(os.path.join(mk_path, i, j), os.path.join(
+                                html_path, i, os.path.splitext(j)[0] + '.html'), os.path.splitext(j)[0], os.path.splitext(j)[0])
+                            if not os.path.exists(os.path.join(html_path, i, 'script')):
+                                os.mkdir(os.path.join(html_path, i, 'script'))
+                            if not os.path.exists(os.path.join(html_path, i, 'script', os.path.splitext(j)[0] + '.js')):
+                                with open(os.path.join(html_path, i, 'script', os.path.splitext(j)[0] + '.js'), 'w') as js:
+                                    js.write('')
+                            self.process_bar.update(1)
+                        else:
+                            shutil.copyfile(os.path.join(
+                                mk_path, i, j), os.path.join(html_path, i, j))
+            pass
+
+    def markdown_convert_html(self, input_file, out_file, title, *args):
         include_after = \
             '''
             <script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>
             <script>mermaid.initialize({startOnLoad:true});</script>
             <script src='https://cdn.jsdelivr.net/npm/chart.js@2.8.0'></script>
+            <link href="https://cdn.bootcss.com/highlight.js/9.6.0/styles/atelier-lakeside-dark.min.css" rel="stylesheet"/>
+            <script src="//cdn.bootcss.com/highlight.js/9.11.0/highlight.min.js"></script>
+            <script>hljs.initHighlightingOnLoad();</script>
+            <script src="//cdn.bootcss.com/highlightjs-line-numbers.js/1.1.0/highlightjs-line-numbers.min.js"></script>
+            <script>hljs.initLineNumbersOnLoad();</script>
+            <script src="https://twemoji.maxcdn.com/v/13.0.1/twemoji.min.js" integrity="sha384-5f4X0lBluNY/Ib4VhGx0Pf6iDCF99VGXJIyYy7dDLY5QlEd7Ap0hICSSZA1XYbc4" crossorigin="anonymous"></script>
+            <script>twemoji.parse(document.body);</script>
+            <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+            <div id="vcomments"></div>
             <script src='/script/mk.js'></script>
+            '''
+        if args:
+            include_after += f'''
+            <script src='./script/{args[0]}.js'></script>
             '''
         pdoc_args = [
             '-c',
-            '../css/markdown.css',
+            f'/css/{self.THEME}/{self.THEME}.css',
             '--mathjax=https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js',
             '-s',
             '--highlight-style=breezedark',
@@ -99,21 +185,31 @@ class blog(object):
             http.server.SimpleHTTPRequestHandler, directory='./out')
         httpd = http.server.HTTPServer(('', PORT), handler)
         print(f'server has start at 0.0.0.0:{PORT}')
-        httpd.serve_forever()
+        webbrowser.open_new_tab(f'0.0.0.0:{PORT}')
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\npreview has stoped")
 
 
 if __name__ == "__main__":
     # file_convert('source/first/test.md', 'out/first/test_py.html', 'test_py')
+
     myblog = blog()
-    opts, args = getopt.getopt(sys.argv[1:], 'oph', ['out', 'preview', 'help'])
+    opts = []
+    args = []
+    help_str = '''  -h --help print this page
+  -o --out convert markdown to html
+  -p --preview start a http server to preview html
+            '''
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'oph', [
+                                   'out', 'preview', 'help'])
+    except getopt.GetoptError as err:
+        print(help_str+str(err))
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print(
-                '''-h --help print this page
--o --out convert markdown to html
--p --preview start a http server to preview html
-                '''
-            )
+            print(help_str)
             sys.exit()
             pass
         elif opt in ('-o', '--out'):
@@ -123,10 +219,6 @@ if __name__ == "__main__":
             myblog.start_preview()
             pass
         else:
-            print('''
-                  -h --help print this page
-                  -o --out convert markdown to html
-                  -p --preview start a http server to preview html
-                  ''')
+            print(help_str)
             pass
         pass
