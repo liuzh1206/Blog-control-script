@@ -175,7 +175,8 @@ class blog(object):
             '--variable',
             f'include-after={include_after}',
             '--metadata',
-            f'title={title}']
+            f'title={title}',
+            '--template=./template/html.yamsl']
         pypandoc.convert_file(input_file,
                               to='html',
                               outputfile=out_file,
