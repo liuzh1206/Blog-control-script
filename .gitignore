@@ -1,0 +1,12 @@
+source/*
+out/*
+public
+github/*
+.vim
+!blog.py
+!out/biliEmoji.json
+!out/static/
+!source/index.md
+!template/html.yamsl
+!README.md
+!LICENSE
