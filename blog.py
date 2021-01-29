@@ -11,7 +11,7 @@ import pypandoc
 import webbrowser
 
 
-class process():
+class Process():
     def __init__(self, total=0, start_str='', end_str=''):
         self.total = total
         self.status = 0
@@ -85,7 +85,7 @@ class blog(object):
         self.write_data()
         with open('./out/data.json') as datas:
             files = json.load(datas)
-        self.process_bar = process(self.n)
+        self.process_bar = Process(self.n)
         self.compile_html('source', 'out', files['source'])
 
     def compile_html(self, mk_path, html_path, paths):
@@ -141,21 +141,24 @@ class blog(object):
             pass
 
     def markdown_convert_html(self, input_file, out_file, title, *args):
+        header_includes = \
+            '''
+            <script src='/static/lib/mermaid.min.js'></script>
+            <script src='/static/lib/chart.js'></script>
+            <script src="/static/lib/highlight.min.js"></script>
+            <link href="/static/lib/atelier-lakeside-dark.min.css" rel="stylesheet"/>
+            <script src="/static/lib/highlightjs-line-numbers.min.js"></script>
+            <!--<script src="https://twemoji.maxcdn.com/v/13.0.1/twemoji.min.js" integrity="sha384-5f4X0lBluNY/Ib4VhGx0Pf6iDCF99VGXJIyYy7dDLY5QlEd7Ap0hICSSZA1XYbc4" crossorigin="anonymous"></script>-->
+            <script>mermaid.initialize({startOnLoad:true});</script>
+            <script>hljs.initHighlightingOnLoad();</script>
+            <script>hljs.initLineNumbersOnLoad();</script>
+            <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+            '''
         include_after = \
             '''
-            <script src='https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js'></script>
-            <script>mermaid.initialize({startOnLoad:true});</script>
-            <script src='https://cdn.jsdelivr.net/npm/chart.js@2.8.0'></script>
-            <link href="https://cdn.bootcss.com/highlight.js/9.6.0/styles/atelier-lakeside-dark.min.css" rel="stylesheet"/>
-            <script src="//cdn.bootcss.com/highlight.js/9.11.0/highlight.min.js"></script>
-            <script>hljs.initHighlightingOnLoad();</script>
-            <script src="//cdn.bootcss.com/highlightjs-line-numbers.js/1.1.0/highlightjs-line-numbers.min.js"></script>
-            <script>hljs.initLineNumbersOnLoad();</script>
-            <script src="https://twemoji.maxcdn.com/v/13.0.1/twemoji.min.js" integrity="sha384-5f4X0lBluNY/Ib4VhGx0Pf6iDCF99VGXJIyYy7dDLY5QlEd7Ap0hICSSZA1XYbc4" crossorigin="anonymous"></script>
-            <script>twemoji.parse(document.body);</script>
-            <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+            <!--<script>twemoji.parse(document.body);</script>-->
             <div id="vcomments"></div>
-            <script src='/script/mk.js'></script>
+            <script src='/static/markdown.js'></script>
             '''
         if args:
             include_after += f'''
@@ -163,10 +166,12 @@ class blog(object):
             '''
         pdoc_args = [
             '-c',
-            f'/css/{self.THEME}/{self.THEME}.css',
+            f'/static/css/{self.THEME}/{self.THEME}.css',
             '--mathjax=https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js',
             '-s',
             '--highlight-style=breezedark',
+            '--variable',
+            f'header-includes={header_includes}',
             '--variable',
             f'include-after={include_after}',
             '--metadata',
