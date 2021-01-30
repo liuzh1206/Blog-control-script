@@ -2,6 +2,7 @@ source/*
 out/*
 public
 github/*
+out/static/markdown.js
 .vim
 !blog.py
 !out/biliEmoji.json

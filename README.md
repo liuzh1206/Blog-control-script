@@ -1,1 +1,1 @@
-# Blog-control-script
+# Blog-management-script
