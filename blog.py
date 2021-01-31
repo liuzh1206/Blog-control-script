@@ -106,7 +106,7 @@ class blog(object):
                                     js.write('')
                         else:
                             self.markdown_convert_html(os.path.join(mk_path, i), os.path.join(
-                                html_path, os.path.splitext(i)[0] + '.html'), os.path.splitext(i)[0], os.path.splitext(i))
+                                html_path, os.path.splitext(i)[0] + '.html'), os.path.splitext(i)[0], os.path.splitext(i)[0])
                             if not os.path.exists(os.path.join(html_path, 'script')):
                                 os.mkdir(os.path.join(html_path, 'script'))
                             if not os.path.exists(os.path.join(html_path, 'script', os.path.splitext(i)[0] + '.js')):
@@ -153,12 +153,13 @@ class blog(object):
             <script>hljs.initHighlightingOnLoad();</script>
             <script>hljs.initLineNumbersOnLoad();</script>
             <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+            <script src='/static/markdown.js'></script>
             '''
         include_after = \
             '''
             <!--<script>twemoji.parse(document.body);</script>-->
             <div id="vcomments"></div>
-            <script src='/static/markdown.js'></script>
+            <script src='/static/markdown_bd.js'></script>
             '''
         if args:
             include_after += f'''
